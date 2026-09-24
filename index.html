@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OAC Golf Scorecard Generator</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --ink:#171717;
+    --grid:#242424;
+    --paper:#fff;
+    --muted:#6b7280;
+    --panel:#f7f7f8;
+    --green:#a8cf55;
+    --blue:#1378b8;
+    --gold:#e8dfa2;
+    --black:#252525;
+    --silver:#e3e3e3;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    color:var(--ink);
+    background:#efefef;
+  }
+  .app{
+    max-width:1500px;
+    margin:0 auto;
+    padding:22px;
+  }
+  .controls{
+    background:#fff;
+    border:1px solid #d8d8d8;
+    border-radius:14px;
+    padding:20px;
+    box-shadow:0 3px 18px rgba(0,0,0,.06);
+    margin-bottom:20px;
+  }
+  .controls h1{font-size:25px;margin:0 0 7px}
+  .controls p{margin:4px 0 14px;color:#525252;line-height:1.4}
+  .control-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:end;
+  }
+  .field{min-width:180px}
+  .field label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}
+  input[type=file], select, button{font:inherit}
+  input[type=file], select{
+    min-height:42px;
+    padding:8px 10px;
+    border:1px solid #bbb;
+    border-radius:8px;
+    background:#fff;
+  }
+  button{
+    border:0;
+    border-radius:8px;
+    padding:11px 16px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .primary{background:#1e6a42;color:#fff}
+  .secondary{background:#e8e8e8;color:#222}
+  #status{
+    margin-top:12px;
+    padding:10px 12px;
+    background:#f5f5f5;
+    border-radius:8px;
+    font-size:13px;
+    color:#444;
+  }
+  #cards{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  .card-page{
+    background:#fff;
+    padding:18px;
+    border:1px solid #d0d0d0;
+    box-shadow:0 2px 14px rgba(0,0,0,.06);
+  }
+  .card-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:8px;
+  }
+  .card-title h2{margin:0;font-size:18px}
+  .card-title .meta{font-size:12px;color:#555}
+  .scorecard{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    border:2px solid var(--grid);
+    font-size:11px;
+    background:#fff;
+  }
+  .scorecard col.name-col{width:155px}
+  .scorecard col.hole-col{width:42px}
+  .scorecard col.total-col{width:49px}
+  .scorecard th,.scorecard td{
+    border:1px solid var(--grid);
+    height:30px;
+    padding:2px 3px;
+    text-align:center;
+    vertical-align:middle;
+    position:relative;
+    overflow:hidden;
+  }
+  .scorecard .left{
+    text-align:left;
+    padding-left:7px;
+    font-weight:700;
+  }
+  .scorecard .head{
+    background:#292929;
+    color:#fff;
+    font-weight:700;
+  }
+  .tee-gold{background:var(--gold)}
+  .tee-black{background:var(--black);color:#fff}
+  .tee-blue{background:var(--blue);color:#fff}
+  .tee-member{background:#f6f6f6}
+  .tee-white{background:#fff}
+  .tee-silver{background:var(--silver)}
+  .tee-green{background:var(--green)}
+  .hcp-row{background:#fafafa;font-weight:700}
+  .par-row{background:#292929;color:#fff;font-weight:700}
+  .player-row td{height:39px}
+  .tracking-row td{height:34px}
+  .tracking-start td{border-top-width:2px}
+  .player-name{
+    text-align:left!important;
+    padding:4px 7px!important;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .player-sub{
+    display:block;
+    font-size:9px;
+    font-weight:400;
+    color:#555;
+    margin-top:2px;
+    padding-left:14px;
+  }
+  .tracking-label{
+    text-align:left!important;
+    padding:4px 7px!important;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .tracking-label .player-sub{
+    padding-left:14px;
+  }
+  .tee-dot{
+    display:inline-block;
+    width:9px;height:9px;
+    border-radius:50%;
+    border:1px solid #555;
+    margin-right:5px;
+    vertical-align:0;
+  }
+
+  /* Full corner-to-corner stroke marks */
+  td.stroke-cell{padding:0}
+  .stroke-layer{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  }
+  .stroke-main,
+  .stroke-extra-a,
+  .stroke-extra-b{
+    position:absolute;
+    left:-18%;
+    top:50%;
+    width:136%;
+    transform-origin:center;
+    border-top-style:solid;
+    border-top-color:#111;
+    border-top-width:2.6px;
+    transform:rotate(-45deg);
+  }
+  .stroke-extra-a{
+    transform:translateY(-5px) rotate(-45deg);
+  }
+  .stroke-extra-b{
+    transform:translateY(5px) rotate(-45deg);
+  }
+
+  .empty{
+    background:#fff;
+    border:1px dashed #bbb;
+    border-radius:12px;
+    padding:35px;
+    color:#666;
+    text-align:center;
+  }
+  .footline{
+    display:flex;
+    justify-content:space-between;
+    gap:20px;
+    font-size:11px;
+    padding-top:8px;
+  }
+  .line{
+    flex:1;
+    border-bottom:1px solid #555;
+    min-height:18px;
+  }
+  .labelled{display:flex;gap:6px;align-items:flex-end;flex:1}
+  .labelled.date{flex:.65}
+  .warning{color:#9a3412;font-weight:700}
+  @page { size: landscape; margin: 0.35in; }
+  @media print{
+    body{background:#fff}
+    .app{max-width:none;padding:0}
+    .controls{display:none!important}
+    #cards{gap:0}
+    .card-page{
+      border:none;
+      box-shadow:none;
+      padding:0;
+      page-break-after:always;
+      break-after:page;
+      width:100%;
+    }
+    .card-page:last-child{page-break-after:auto;break-after:auto}
+    .card-title{margin-bottom:6px}
+    .scorecard{font-size:10px}
+    .scorecard th,.scorecard td{height:27px}
+    .player-row td{height:36px}
+    .tracking-row td{height:31px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="controls">
+    <h1>OAC Golf Scorecard Generator</h1>
+    <p>Upload your Excel file with columns <b>Tee Time</b>, <b>Player</b>, <b>Tee</b>, and <b>HCP</b>. A nonblank Tee Time starts a new foursome; the next blank Tee Time rows stay with that group.</p>
+    <div class="control-row">
+      <div class="field">
+        <label for="file">Excel file</label>
+        <input id="file" type="file" accept=".xlsx,.xls">
+      </div>
+      <div class="field">
+        <label for="hcpType">Stroke-index row</label>
+        <select id="hcpType">
+          <option value="men" selected>Men's Hcp</option>
+          <option value="women">Women's Hcp</option>
+        </select>
+      </div>
+      <button id="pdfBtn" class="primary">Download PDF</button>
+      <button id="printBtn" class="secondary">Print</button>
+      <button id="clearBtn" class="secondary">Clear</button>
+    </div>
+    <div id="status">Waiting for an Excel file.</div>
+  </section>
+
+  <main id="cards">
+    <div class="empty">Upload the scorecard template to generate one clean scorecard for each tee time.</div>
+  </main>
+</div>
+
+<script>
+const COURSE = {
+  holes:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+  par:[4,4,3,4,5,4,4,3,4,4,4,5,3,4,4,3,4,5],
+  menHcp:[1,15,9,7,11,3,13,17,5,6,12,8,18,10,2,16,14,4],
+  womenHcp:[3,15,5,7,11,1,13,17,9,6,8,10,16,12,4,18,14,2],
+  tees:[
+    {name:"Gold", cls:"tee-gold", rating:"73.0/140", yards:[436,410,198,370,489,384,370,163,450,407,381,511,173,370,418,199,351,525]},
+    {name:"Black", cls:"tee-black", rating:"71.6/136", yards:[389,410,188,370,489,362,370,163,411,407,381,478,173,370,389,172,315,525]},
+    {name:"Blue", cls:"tee-blue", rating:"70.7/133", yards:[389,387,188,352,472,362,345,135,411,378,349,478,154,338,389,172,315,505]},
+    {name:"Member", cls:"tee-member", rating:"69.8/129", yards:[353,387,188,352,461,362,317,135,363,378,349,478,154,338,362,172,315,466]},
+    {name:"White", cls:"tee-white", rating:"68.1/125", yards:[353,363,173,332,461,338,317,128,363,354,284,432,147,310,362,141,264,466]},
+    {name:"Silver", cls:"tee-silver", rating:"65.9/116", yards:[291,363,141,276,388,318,317,128,318,354,284,392,147,268,329,141,255,405]},
+    {name:"Green", cls:"tee-green", rating:"69.2/121", yards:[291,334,141,276,388,247,236,111,318,310,229,392,126,268,329,110,221,405]}
+  ]
+};
+
+const teeColors = {
+  gold:"#d5c85f",
+  black:"#262626",
+  blue:"#1378b8",
+  member:"#d8d8d8",
+  white:"#ffffff",
+  silver:"#bdbdbd",
+  green:"#8ec63f"
+};
+
+function sum(a){ return a.reduce((x,y)=>x+(Number(y)||0),0); }
+function esc(v){
+  return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+function normalize(s){ return String(s ?? "").trim(); }
+
+/* Golf handicap logic:
+   - First 18 strokes: one normal slash on every hole by handicap order.
+   - Extra strokes above 18: go to the hardest holes first (lowest index numbers).
+   - Those extra strokes are shown as thin parallel slashes. */
+function strokeCount(hcp, index){
+  let h = Math.floor(Number(hcp));
+  if (!Number.isFinite(h) || h <= 0) return 0;
+  let base = Math.floor(h/18);
+  let rem = h % 18;
+  return base + (index <= rem ? 1 : 0);
+}
+
+function strokeCell(n){
+  if(n <= 0) return '<td class="stroke-cell"></td>';
+
+  let html = '<td class="stroke-cell"><span class="stroke-layer">';
+  if(n === 1){
+    html += '<span class="stroke-main"></span>';
+  } else if(n === 2){
+    html += '<span class="stroke-extra-a"></span><span class="stroke-extra-b"></span>';
+  } else {
+    html += '<span class="stroke-extra-a"></span><span class="stroke-main"></span><span class="stroke-extra-b"></span>';
+  }
+  html += '</span></td>';
+  return html;
+}
+
+function teeDot(tee){
+  const key = normalize(tee).toLowerCase();
+  const color = teeColors[key] || "#ddd";
+  const border = key==="black" ? "#111" : "#666";
+  return `<span class="tee-dot" style="background:${color};border-color:${border}"></span>`;
+}
+
+function headerHtml(){
+  const cells1 = COURSE.holes.slice(0,9).map(h=>`<th class="head">${h}</th>`).join("");
+  const cells2 = COURSE.holes.slice(9).map(h=>`<th class="head">${h}</th>`).join("");
+  return `<tr>
+    <th class="head left">HOLE</th>
+    ${cells1}<th class="head">OUT</th>
+    ${cells2}<th class="head">IN</th><th class="head">TOT</th>
+  </tr>`;
+}
+function teeRow(t){
+  const front=t.yards.slice(0,9), back=t.yards.slice(9);
+  const frontCells=front.map(x=>`<td>${x}</td>`).join("");
+  const backCells=back.map(x=>`<td>${x}</td>`).join("");
+  return `<tr class="${t.cls}">
+    <td class="left">${esc(t.name)} <span style="font-size:9px;font-weight:400;margin-left:7px">${esc(t.rating)}</span></td>
+    ${frontCells}<td><b>${sum(front)}</b></td>
+    ${backCells}<td><b>${sum(back)}</b></td><td><b>${sum(t.yards)}</b></td>
+  </tr>`;
+}
+function indexRow(indices,label){
+  return `<tr class="hcp-row">
+    <td class="left">${label}</td>
+    ${indices.slice(0,9).map(x=>`<td>${x}</td>`).join("")}<td></td>
+    ${indices.slice(9).map(x=>`<td>${x}</td>`).join("")}<td></td><td></td>
+  </tr>`;
+}
+function parRow(){
+  return `<tr class="par-row">
+    <td class="left">PAR</td>
+    ${COURSE.par.slice(0,9).map(x=>`<td>${x}</td>`).join("")}<td>35</td>
+    ${COURSE.par.slice(9).map(x=>`<td>${x}</td>`).join("")}<td>36</td><td>71</td>
+  </tr>`;
+}
+function playerRow(player, indices){
+  const hcp=Number(player.hcp);
+  const front = indices.slice(0,9).map(idx=>strokeCell(strokeCount(hcp,idx))).join("");
+  const back = indices.slice(9).map(idx=>strokeCell(strokeCount(hcp,idx))).join("");
+  const tee = normalize(player.tee);
+  const label = player.name ? `${esc(player.name)}${Number.isFinite(hcp) ? ` (${esc(hcp)})` : ""}` : "";
+  return `<tr class="player-row">
+    <td class="player-name">${teeDot(tee)}${label}</td>
+    ${front}<td></td>${back}<td></td><td></td>
+  </tr>`;
+}
+
+function trackingRow(player, first=false){
+  const tee = normalize(player.tee);
+  return `<tr class="tracking-row ${first ? "tracking-start" : ""}">
+    <td class="tracking-label">${teeDot(tee)}${esc(player.name)}</td>
+    ${Array.from({length:9},()=>'<td></td>').join("")}<td></td>
+    ${Array.from({length:9},()=>'<td></td>').join("")}<td></td><td></td>
+  </tr>`;
+}
+
+function render(groups){
+  const wrap=document.getElementById("cards");
+  const type=document.getElementById("hcpType").value;
+  const indices = type==="women" ? COURSE.womenHcp : COURSE.menHcp;
+  const indexLabel = type==="women" ? "Women's Hcp" : "Men's Hcp";
+
+  if(!groups.length){
+    wrap.innerHTML='<div class="empty">No populated player rows were found.</div>';
+    return;
+  }
+
+  wrap.innerHTML = groups.map((g,gi)=>{
+    const players=g.players.slice(0,4);
+    while(players.length<4) players.push({name:"",tee:"",hcp:""});
+    return `<section class="card-page">
+      <div class="card-title">
+        <h2>Tee Time: ${esc(g.teeTime)}</h2>
+        <div class="meta">Generated scorecard ${gi+1} of ${groups.length}</div>
+      </div>
+      <table class="scorecard">
+        <colgroup>
+          <col class="name-col">
+          ${Array.from({length:9},()=>'<col class="hole-col">').join("")}
+          <col class="total-col">
+          ${Array.from({length:9},()=>'<col class="hole-col">').join("")}
+          <col class="total-col"><col class="total-col">
+        </colgroup>
+        ${headerHtml()}
+        ${COURSE.tees.map(teeRow).join("")}
+        ${indexRow(indices,indexLabel)}
+        ${players.map(p=>playerRow(p,indices)).join("")}
+        ${parRow()}
+        ${players.map((p,i)=>trackingRow(p,i===0)).join("")}
+      </table>
+      <div class="footline">
+        <div class="labelled"><b>Scorer:</b><div class="line"></div></div>
+        <div class="labelled"><b>Attest:</b><div class="line"></div></div>
+        <div class="labelled date"><b>Date:</b><div class="line"></div></div>
+      </div>
+    </section>`;
+  }).join("");
+}
+
+let loadedGroups=[];
+
+function parseWorkbook(file){
+  if(typeof XLSX==="undefined"){
+    document.getElementById("status").innerHTML='<span class="warning">The Excel reader did not load. Make sure you are connected to the internet, then reopen this file.</span>';
+    return;
+  }
+
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
+      if(!rows.length) throw new Error("The first worksheet is empty.");
+
+      const hdr=rows[0].map(x=>normalize(x).toLowerCase());
+      const idx={
+        teeTime:hdr.indexOf("tee time"),
+        player:hdr.indexOf("player"),
+        tee:hdr.indexOf("tee"),
+        hcp:hdr.indexOf("hcp")
+      };
+      if(Object.values(idx).some(x=>x<0)){
+        throw new Error('Expected headers: "Tee Time", "Player", "Tee", and "HCP".');
+      }
+
+      const groups=[];
+      let current=null;
+      let skippedExtra=0;
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i];
+        const tt=normalize(r[idx.teeTime]);
+        const name=normalize(r[idx.player]);
+        const tee=normalize(r[idx.tee]);
+        const hcpRaw=normalize(r[idx.hcp]);
+
+        if(tt){
+          current={teeTime:tt,players:[]};
+          groups.push(current);
+        }
+        if(!current && (name||tee||hcpRaw)){
+          current={teeTime:"Unspecified",players:[]};
+          groups.push(current);
+        }
+        if(name){
+          const num = Number(String(hcpRaw).replace(/[^\d.-]/g,""));
+          if(current.players.length<4){
+            current.players.push({
+              name:name,
+              tee:tee,
+              hcp:Number.isFinite(num)?num:""
+            });
+          } else {
+            skippedExtra++;
+          }
+        }
+      }
+
+      loadedGroups=groups.filter(g=>g.players.length>0);
+      render(loadedGroups);
+      let totalPlayers = loadedGroups.reduce((n,g)=>n+g.players.length,0);
+      let msg=`Loaded <b>${loadedGroups.length}</b> tee time${loadedGroups.length===1?"":"s"} and <b>${totalPlayers}</b> player${totalPlayers===1?"":"s"}.`;
+      if(skippedExtra) msg+=` <span class="warning">${skippedExtra} extra player row(s) were skipped because a scorecard is limited to four players.</span>`;
+      document.getElementById("status").innerHTML=msg;
+    }catch(err){
+      document.getElementById("status").innerHTML=`<span class="warning">Could not read the workbook: ${esc(err.message)}</span>`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+
+function pdfSafe(s){
+  return String(s ?? "").replace(/[^\x20-\x7E]/g," ");
+}
+
+function pdfColorForTee(name){
+  const key = normalize(name).toLowerCase();
+  const map = {
+    gold:[232,223,162],
+    black:[37,37,37],
+    blue:[19,120,184],
+    member:[246,246,246],
+    white:[255,255,255],
+    silver:[227,227,227],
+    green:[168,207,85]
+  };
+  return map[key] || [255,255,255];
+}
+
+function drawPdfStroke(doc,x,y,w,h,count){
+  if(count <= 0) return;
+  doc.setDrawColor(20,20,20);
+  doc.setLineWidth(1.45);
+
+  // Main slash: true corner-to-corner.
+  doc.line(x, y+h, x+w, y);
+
+  // Additional strokes: same thickness, parallel to the original.
+  if(count >= 2){
+    const off = 3.0;
+    doc.line(x, y+h-off, x+w-off, y);
+  }
+  if(count >= 3){
+    const off = 3.0;
+    doc.line(x+off, y+h, x+w, y+off);
+  }
+}
+
+function generatePdf(download=true){
+  if(!loadedGroups.length){
+    document.getElementById("status").innerHTML =
+      '<span class="warning">Upload an Excel file before generating a PDF.</span>';
+    return;
+  }
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    document.getElementById("status").innerHTML =
+      '<span class="warning">The PDF library did not load. Make sure you are connected to the internet and reopen this file.</span>';
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:"landscape", unit:"pt", format:"letter", compress:true});
+
+  const type=document.getElementById("hcpType").value;
+  const indices = type==="women" ? COURSE.womenHcp : COURSE.menHcp;
+  const indexLabel = type==="women" ? "Women's Hcp" : "Men's Hcp";
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 22;
+  const tableX = margin;
+  const tableW = pageW - margin*2;
+  const nameW = 108;
+  const totalW = 34;
+  const holeW = (tableW - nameW - totalW*3)/18;
+
+  const colWidths = [nameW];
+  for(let i=0;i<9;i++) colWidths.push(holeW);
+  colWidths.push(totalW);
+  for(let i=0;i<9;i++) colWidths.push(holeW);
+  colWidths.push(totalW,totalW);
+
+  function xAt(col){
+    let x=tableX;
+    for(let i=0;i<col;i++) x += colWidths[i];
+    return x;
+  }
+
+  function cell(doc,col,y,h,text,opts={}){
+    const x=xAt(col), w=colWidths[col];
+    const fill=opts.fill || null;
+    if(fill){
+      doc.setFillColor(fill[0],fill[1],fill[2]);
+      doc.rect(x,y,w,h,"F");
+    }
+    doc.setDrawColor(35,35,35);
+    doc.setLineWidth(0.6);
+    doc.rect(x,y,w,h);
+
+    if(text !== undefined && text !== null && text !== ""){
+      const darkFill = fill && ((fill[0]+fill[1]+fill[2]) < 220);
+      const txtColor = opts.textColor || (darkFill ? [255,255,255] : [20,20,20]);
+      doc.setTextColor(txtColor[0],txtColor[1],txtColor[2]);
+      doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+      doc.setFontSize(opts.fontSize || 7.7);
+      const align = opts.align || "center";
+      let tx = x+w/2;
+      if(align==="left") tx=x+4;
+      if(align==="right") tx=x+w-4;
+      const ty=y+h/2+2.5;
+      doc.text(pdfSafe(text), tx, ty, {align});
+    }
+  }
+
+  loadedGroups.forEach((g,gi)=>{
+    if(gi>0) doc.addPage("letter","landscape");
+
+    doc.setTextColor(20,20,20);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(13);
+    doc.text(`Tee Time: ${pdfSafe(g.teeTime)}`, margin, 28);
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(7.5);
+    doc.text(`Scorecard ${gi+1} of ${loadedGroups.length}`, pageW-margin, 28, {align:"right"});
+
+    let y=38;
+
+    // Header row
+    const headerH=18;
+    cell(doc,0,y,headerH,"HOLE",{fill:[41,41,41],textColor:[255,255,255],bold:true,align:"left"});
+    for(let i=0;i<9;i++) cell(doc,1+i,y,headerH,String(i+1),{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,10,y,headerH,"OUT",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    for(let i=0;i<9;i++) cell(doc,11+i,y,headerH,String(i+10),{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,20,y,headerH,"IN",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,21,y,headerH,"TOT",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    y+=headerH;
+
+    // Tee rows
+    const teeH=17;
+    COURSE.tees.forEach(t=>{
+      let fill=pdfColorForTee(t.name);
+      const dark = (fill[0]+fill[1]+fill[2]) < 220;
+      cell(doc,0,y,teeH,`${t.name}  ${t.rating}`,{
+        fill, textColor:dark?[255,255,255]:[20,20,20], bold:true, align:"left", fontSize:7.2
+      });
+      t.yards.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,teeH,String(v),{fill,textColor:dark?[255,255,255]:[20,20,20]}));
+      cell(doc,10,y,teeH,String(sum(t.yards.slice(0,9))),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
+      t.yards.slice(9).forEach((v,i)=>cell(doc,11+i,y,teeH,String(v),{fill,textColor:dark?[255,255,255]:[20,20,20]}));
+      cell(doc,20,y,teeH,String(sum(t.yards.slice(9))),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
+      cell(doc,21,y,teeH,String(sum(t.yards)),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
+      y+=teeH;
+    });
+
+    // Handicap row
+    const idxH=17;
+    cell(doc,0,y,idxH,indexLabel,{fill:[250,250,250],bold:true,align:"left",fontSize:7.1});
+    indices.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,idxH,String(v),{fill:[250,250,250],bold:true}));
+    cell(doc,10,y,idxH,"",{fill:[250,250,250]});
+    indices.slice(9).forEach((v,i)=>cell(doc,11+i,y,idxH,String(v),{fill:[250,250,250],bold:true}));
+    cell(doc,20,y,idxH,"",{fill:[250,250,250]});
+    cell(doc,21,y,idxH,"",{fill:[250,250,250]});
+    y+=idxH;
+
+    // Player rows
+    const players=g.players.slice(0,4);
+    while(players.length<4) players.push({name:"",tee:"",hcp:""});
+    const playerH=27;
+
+    players.forEach(p=>{
+      const hcp=Number(p.hcp);
+      const tee=normalize(p.tee);
+
+      // Draw the player-name cell manually so the PDF matches the on-screen card:
+      // colored tee circle, player name, then Tee/HCP on the line below.
+      const px=xAt(0), pw=colWidths[0];
+      doc.setDrawColor(35,35,35);
+      doc.setLineWidth(0.6);
+      doc.rect(px,y,pw,playerH);
+
+      if(p.name){
+        const fill = pdfColorForTee(tee);
+        const cx = px + 8;
+        const cy = y + playerH/2;
+        doc.setFillColor(fill[0],fill[1],fill[2]);
+        doc.setDrawColor(70,70,70);
+        doc.circle(cx,cy,3.2,"FD");
+
+        doc.setTextColor(20,20,20);
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(7.7);
+        const nameLabel = `${p.name}${Number.isFinite(hcp) ? ` (${hcp})` : ""}`;
+        doc.text(pdfSafe(nameLabel), px+15, y+playerH/2+2.6);
+      }
+
+      for(let i=0;i<9;i++){
+        cell(doc,1+i,y,playerH,"");
+        if(p.name) drawPdfStroke(doc,xAt(1+i),y,colWidths[1+i],playerH,strokeCount(hcp,indices[i]));
+      }
+      cell(doc,10,y,playerH,"");
+
+      for(let i=0;i<9;i++){
+        cell(doc,11+i,y,playerH,"");
+        if(p.name) drawPdfStroke(doc,xAt(11+i),y,colWidths[11+i],playerH,strokeCount(hcp,indices[9+i]));
+      }
+      cell(doc,20,y,playerH,"");
+      cell(doc,21,y,playerH,"");
+      y+=playerH;
+    });
+
+    // PAR row sits between score entry and points/other tracking.
+    const parH=18;
+    cell(doc,0,y,parH,"PAR",{fill:[41,41,41],textColor:[255,255,255],bold:true,align:"left"});
+    COURSE.par.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,parH,String(v),{fill:[41,41,41],textColor:[255,255,255],bold:true}));
+    cell(doc,10,y,parH,"35",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    COURSE.par.slice(9).forEach((v,i)=>cell(doc,11+i,y,parH,String(v),{fill:[41,41,41],textColor:[255,255,255],bold:true}));
+    cell(doc,20,y,parH,"36",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,21,y,parH,"71",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    y+=parH;
+
+    // Second set of boxes for tracking points/other items.
+    const trackingH=22;
+    players.forEach((p,pi)=>{
+      const tee=normalize(p.tee);
+
+      const px=xAt(0), pw=colWidths[0];
+      doc.setDrawColor(35,35,35);
+      doc.setLineWidth(0.6);
+      doc.rect(px,y,pw,trackingH);
+
+      if(p.name){
+        const fill = pdfColorForTee(tee);
+        doc.setFillColor(fill[0],fill[1],fill[2]);
+        doc.setDrawColor(70,70,70);
+        doc.circle(px+8,y+trackingH/2,3.0,"FD");
+
+        doc.setTextColor(20,20,20);
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(7.3);
+        doc.text(pdfSafe(p.name), px+15, y+trackingH/2+2.5);
+      }
+
+      for(let c=1;c<=21;c++) cell(doc,c,y,trackingH,"");
+      y+=trackingH;
+    });
+
+    y+=14;
+
+    // Footer lines
+    doc.setTextColor(20,20,20);
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(8);
+    const lineW=180;
+    doc.text("Scorer:",margin,y);
+    doc.line(margin+32,y+1,margin+32+lineW,y+1);
+    doc.text("Attest:",margin+265,y);
+    doc.line(margin+295,y+1,margin+295+lineW,y+1);
+    doc.text("Date:",pageW-170,y);
+    doc.line(pageW-145,y+1,pageW-margin,y+1);
+  });
+
+  const fileName = "golf-scorecards.pdf";
+  const blob = doc.output("blob");
+  const url = URL.createObjectURL(blob);
+
+  if(download){
+    // Try the normal browser download first.
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    // Also leave a visible backup link in case the browser blocks the automatic download.
+    document.getElementById("status").innerHTML =
+      `Created <b>${fileName}</b> with ${loadedGroups.length} scorecard${loadedGroups.length===1?"":"s"}. ` +
+      `<a id="manualPdfLink" href="${url}" download="${fileName}" style="font-weight:700">Click here to save the PDF if it did not download automatically.</a>`;
+  } else {
+    const win = window.open(url,"_blank");
+    if(!win){
+      document.getElementById("status").innerHTML =
+        `Your browser blocked the print preview. <a href="${url}" target="_blank" rel="noopener" style="font-weight:700">Open the PDF here</a>, then print it.`;
+    }
+  }
+
+  // Keep the object URL alive for 10 minutes so the fallback link remains usable.
+  setTimeout(()=>URL.revokeObjectURL(url),600000);
+}
+
+document.getElementById("file").addEventListener("change",e=>{
+  const f=e.target.files && e.target.files[0];
+  if(f) parseWorkbook(f);
+});
+document.getElementById("hcpType").addEventListener("change",()=>render(loadedGroups));
+document.getElementById("pdfBtn").addEventListener("click",()=>generatePdf(true));
+document.getElementById("printBtn").addEventListener("click",()=>generatePdf(false));
+document.getElementById("clearBtn").addEventListener("click",()=>{
+  document.getElementById("file").value="";
+  loadedGroups=[];
+  document.getElementById("cards").innerHTML='<div class="empty">Upload the scorecard template to generate one clean scorecard for each tee time.</div>';
+  document.getElementById("status").textContent="Waiting for an Excel file.";
+});
+</script>
+</body>
+</html>
