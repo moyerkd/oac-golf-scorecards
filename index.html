@@ -104,6 +104,7 @@
   .scorecard col.name-col{width:155px}
   .scorecard col.hole-col{width:42px}
   .scorecard col.total-col{width:49px}
+  .scorecard col.initials-col{width:34px}
   .scorecard th,.scorecard td{
     border:1px solid var(--grid);
     height:30px;
@@ -154,6 +155,15 @@
     padding:4px 7px!important;
     font-weight:700;
     white-space:nowrap;
+  }
+  .initials-cell{
+    font-weight:700;
+    font-size:10px;
+    letter-spacing:.3px;
+  }
+  .initials-head{
+    font-size:8px;
+    letter-spacing:.2px;
   }
   .tracking-label .player-sub{
     padding-left:14px;
@@ -257,6 +267,7 @@
           <option value="women">Women's Hcp</option>
         </select>
       </div>
+      <button id="templateBtn" class="secondary">Download Blank Excel Template</button>
       <button id="pdfBtn" class="primary">Download PDF</button>
       <button id="printBtn" class="secondary">Print</button>
       <button id="clearBtn" class="secondary">Clear</button>
@@ -336,12 +347,23 @@ function teeDot(tee){
   return `<span class="tee-dot" style="background:${color};border-color:${border}"></span>`;
 }
 
+function getInitials(name){
+  const parts = normalize(name).split(/\s+/).filter(Boolean);
+  return parts
+    .map(p => {
+      const clean = p.replace(/[^A-Za-z0-9]/g,"");
+      return clean ? clean.charAt(0).toUpperCase() : "";
+    })
+    .filter(Boolean)
+    .join("");
+}
+
 function headerHtml(){
   const cells1 = COURSE.holes.slice(0,9).map(h=>`<th class="head">${h}</th>`).join("");
   const cells2 = COURSE.holes.slice(9).map(h=>`<th class="head">${h}</th>`).join("");
   return `<tr>
     <th class="head left">HOLE</th>
-    ${cells1}<th class="head">OUT</th>
+    ${cells1}<th class="head">OUT</th><th class="head initials-head">INIT</th>
     ${cells2}<th class="head">IN</th><th class="head">TOT</th>
   </tr>`;
 }
@@ -351,21 +373,21 @@ function teeRow(t){
   const backCells=back.map(x=>`<td>${x}</td>`).join("");
   return `<tr class="${t.cls}">
     <td class="left">${esc(t.name)} <span style="font-size:9px;font-weight:400;margin-left:7px">${esc(t.rating)}</span></td>
-    ${frontCells}<td><b>${sum(front)}</b></td>
+    ${frontCells}<td><b>${sum(front)}</b></td><td></td>
     ${backCells}<td><b>${sum(back)}</b></td><td><b>${sum(t.yards)}</b></td>
   </tr>`;
 }
 function indexRow(indices,label){
   return `<tr class="hcp-row">
     <td class="left">${label}</td>
-    ${indices.slice(0,9).map(x=>`<td>${x}</td>`).join("")}<td></td>
+    ${indices.slice(0,9).map(x=>`<td>${x}</td>`).join("")}<td></td><td></td>
     ${indices.slice(9).map(x=>`<td>${x}</td>`).join("")}<td></td><td></td>
   </tr>`;
 }
 function parRow(){
   return `<tr class="par-row">
     <td class="left">PAR</td>
-    ${COURSE.par.slice(0,9).map(x=>`<td>${x}</td>`).join("")}<td>35</td>
+    ${COURSE.par.slice(0,9).map(x=>`<td>${x}</td>`).join("")}<td>35</td><td></td>
     ${COURSE.par.slice(9).map(x=>`<td>${x}</td>`).join("")}<td>36</td><td>71</td>
   </tr>`;
 }
@@ -377,7 +399,7 @@ function playerRow(player, indices){
   const label = player.name ? `${esc(player.name)}${Number.isFinite(hcp) ? ` (${esc(hcp)})` : ""}` : "";
   return `<tr class="player-row">
     <td class="player-name">${teeDot(tee)}${label}</td>
-    ${front}<td></td>${back}<td></td><td></td>
+    ${front}<td></td><td class="initials-cell">${esc(getInitials(player.name))}</td>${back}<td></td><td></td>
   </tr>`;
 }
 
@@ -385,7 +407,7 @@ function trackingRow(player, first=false){
   const tee = normalize(player.tee);
   return `<tr class="tracking-row ${first ? "tracking-start" : ""}">
     <td class="tracking-label">${teeDot(tee)}${esc(player.name)}</td>
-    ${Array.from({length:9},()=>'<td></td>').join("")}<td></td>
+    ${Array.from({length:9},()=>'<td></td>').join("")}<td></td><td class="initials-cell">${esc(getInitials(player.name))}</td>
     ${Array.from({length:9},()=>'<td></td>').join("")}<td></td><td></td>
   </tr>`;
 }
@@ -414,6 +436,7 @@ function render(groups){
           <col class="name-col">
           ${Array.from({length:9},()=>'<col class="hole-col">').join("")}
           <col class="total-col">
+          <col class="initials-col">
           ${Array.from({length:9},()=>'<col class="hole-col">').join("")}
           <col class="total-col"><col class="total-col">
         </colgroup>
@@ -434,6 +457,41 @@ function render(groups){
 }
 
 let loadedGroups=[];
+
+
+function downloadBlankTemplate(){
+  if(typeof XLSX==="undefined"){
+    document.getElementById("status").innerHTML =
+      '<span class="warning">The Excel library did not load. Make sure you are connected to the internet and reopen this page.</span>';
+    return;
+  }
+
+  const rows = [
+    ["Tee Time","Player","Tee","HCP"]
+  ];
+
+  // Add enough blank rows for six foursomes (24 players).
+  for(let i=0;i<24;i++){
+    rows.push(["","","",""]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Set practical column widths for the template.
+  ws["!cols"] = [
+    {wch:14},
+    {wch:28},
+    {wch:14},
+    {wch:10}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Scorecard Template");
+  XLSX.writeFile(wb, "OAC_Scorecard_Template.xlsx");
+
+  document.getElementById("status").innerHTML =
+    'Downloaded <b>OAC_Scorecard_Template.xlsx</b>. Enter the tee time on the first player in each group; leave the Tee Time cells blank for the remaining players in that group.';
+}
 
 function parseWorkbook(file){
   if(typeof XLSX==="undefined"){
@@ -568,11 +626,13 @@ function generatePdf(download=true){
   const tableW = pageW - margin*2;
   const nameW = 108;
   const totalW = 34;
-  const holeW = (tableW - nameW - totalW*3)/18;
+  const initialsW = 24;
+  const holeW = (tableW - nameW - totalW*3 - initialsW)/18;
 
   const colWidths = [nameW];
   for(let i=0;i<9;i++) colWidths.push(holeW);
   colWidths.push(totalW);
+  colWidths.push(initialsW);
   for(let i=0;i<9;i++) colWidths.push(holeW);
   colWidths.push(totalW,totalW);
 
@@ -627,9 +687,10 @@ function generatePdf(download=true){
     cell(doc,0,y,headerH,"HOLE",{fill:[41,41,41],textColor:[255,255,255],bold:true,align:"left"});
     for(let i=0;i<9;i++) cell(doc,1+i,y,headerH,String(i+1),{fill:[41,41,41],textColor:[255,255,255],bold:true});
     cell(doc,10,y,headerH,"OUT",{fill:[41,41,41],textColor:[255,255,255],bold:true});
-    for(let i=0;i<9;i++) cell(doc,11+i,y,headerH,String(i+10),{fill:[41,41,41],textColor:[255,255,255],bold:true});
-    cell(doc,20,y,headerH,"IN",{fill:[41,41,41],textColor:[255,255,255],bold:true});
-    cell(doc,21,y,headerH,"TOT",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,11,y,headerH,"INIT",{fill:[41,41,41],textColor:[255,255,255],bold:true,fontSize:6.4});
+    for(let i=0;i<9;i++) cell(doc,12+i,y,headerH,String(i+10),{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,21,y,headerH,"IN",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,22,y,headerH,"TOT",{fill:[41,41,41],textColor:[255,255,255],bold:true});
     y+=headerH;
 
     // Tee rows
@@ -642,9 +703,10 @@ function generatePdf(download=true){
       });
       t.yards.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,teeH,String(v),{fill,textColor:dark?[255,255,255]:[20,20,20]}));
       cell(doc,10,y,teeH,String(sum(t.yards.slice(0,9))),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
-      t.yards.slice(9).forEach((v,i)=>cell(doc,11+i,y,teeH,String(v),{fill,textColor:dark?[255,255,255]:[20,20,20]}));
-      cell(doc,20,y,teeH,String(sum(t.yards.slice(9))),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
-      cell(doc,21,y,teeH,String(sum(t.yards)),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
+      cell(doc,11,y,teeH,"",{fill,textColor:dark?[255,255,255]:[20,20,20]});
+      t.yards.slice(9).forEach((v,i)=>cell(doc,12+i,y,teeH,String(v),{fill,textColor:dark?[255,255,255]:[20,20,20]}));
+      cell(doc,21,y,teeH,String(sum(t.yards.slice(9))),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
+      cell(doc,22,y,teeH,String(sum(t.yards)),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
       y+=teeH;
     });
 
@@ -653,9 +715,10 @@ function generatePdf(download=true){
     cell(doc,0,y,idxH,indexLabel,{fill:[250,250,250],bold:true,align:"left",fontSize:7.1});
     indices.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,idxH,String(v),{fill:[250,250,250],bold:true}));
     cell(doc,10,y,idxH,"",{fill:[250,250,250]});
-    indices.slice(9).forEach((v,i)=>cell(doc,11+i,y,idxH,String(v),{fill:[250,250,250],bold:true}));
-    cell(doc,20,y,idxH,"",{fill:[250,250,250]});
+    cell(doc,11,y,idxH,"",{fill:[250,250,250]});
+    indices.slice(9).forEach((v,i)=>cell(doc,12+i,y,idxH,String(v),{fill:[250,250,250],bold:true}));
     cell(doc,21,y,idxH,"",{fill:[250,250,250]});
+    cell(doc,22,y,idxH,"",{fill:[250,250,250]});
     y+=idxH;
 
     // Player rows
@@ -694,13 +757,14 @@ function generatePdf(download=true){
         if(p.name) drawPdfStroke(doc,xAt(1+i),y,colWidths[1+i],playerH,strokeCount(hcp,indices[i]));
       }
       cell(doc,10,y,playerH,"");
+      cell(doc,11,y,playerH,p.name ? getInitials(p.name) : "",{bold:true,fontSize:7.2});
 
       for(let i=0;i<9;i++){
-        cell(doc,11+i,y,playerH,"");
-        if(p.name) drawPdfStroke(doc,xAt(11+i),y,colWidths[11+i],playerH,strokeCount(hcp,indices[9+i]));
+        cell(doc,12+i,y,playerH,"");
+        if(p.name) drawPdfStroke(doc,xAt(12+i),y,colWidths[12+i],playerH,strokeCount(hcp,indices[9+i]));
       }
-      cell(doc,20,y,playerH,"");
       cell(doc,21,y,playerH,"");
+      cell(doc,22,y,playerH,"");
       y+=playerH;
     });
 
@@ -709,9 +773,10 @@ function generatePdf(download=true){
     cell(doc,0,y,parH,"PAR",{fill:[41,41,41],textColor:[255,255,255],bold:true,align:"left"});
     COURSE.par.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,parH,String(v),{fill:[41,41,41],textColor:[255,255,255],bold:true}));
     cell(doc,10,y,parH,"35",{fill:[41,41,41],textColor:[255,255,255],bold:true});
-    COURSE.par.slice(9).forEach((v,i)=>cell(doc,11+i,y,parH,String(v),{fill:[41,41,41],textColor:[255,255,255],bold:true}));
-    cell(doc,20,y,parH,"36",{fill:[41,41,41],textColor:[255,255,255],bold:true});
-    cell(doc,21,y,parH,"71",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,11,y,parH,"",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    COURSE.par.slice(9).forEach((v,i)=>cell(doc,12+i,y,parH,String(v),{fill:[41,41,41],textColor:[255,255,255],bold:true}));
+    cell(doc,21,y,parH,"36",{fill:[41,41,41],textColor:[255,255,255],bold:true});
+    cell(doc,22,y,parH,"71",{fill:[41,41,41],textColor:[255,255,255],bold:true});
     y+=parH;
 
     // Second set of boxes for tracking points/other items.
@@ -736,7 +801,12 @@ function generatePdf(download=true){
         doc.text(pdfSafe(p.name), px+15, y+trackingH/2+2.5);
       }
 
-      for(let c=1;c<=21;c++) cell(doc,c,y,trackingH,"");
+      for(let c=1;c<=22;c++){
+        cell(doc,c,y,trackingH,(c===11 && p.name) ? getInitials(p.name) : "",{
+          bold:c===11,
+          fontSize:c===11 ? 7.0 : 7.7
+        });
+      }
       y+=trackingH;
     });
 
@@ -784,6 +854,7 @@ function generatePdf(download=true){
   setTimeout(()=>URL.revokeObjectURL(url),600000);
 }
 
+document.getElementById("templateBtn").addEventListener("click",downloadBlankTemplate);
 document.getElementById("file").addEventListener("change",e=>{
   const f=e.target.files && e.target.files[0];
   if(f) parseWorkbook(f);
