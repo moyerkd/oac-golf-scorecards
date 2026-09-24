@@ -227,26 +227,60 @@
   .labelled{display:flex;gap:6px;align-items:flex-end;flex:1}
   .labelled.date{flex:.65}
   .warning{color:#9a3412;font-weight:700}
-  @page { size: landscape; margin: 0.35in; }
+  @page { size: letter portrait; margin: 0.22in; }
   @media print{
     body{background:#fff}
     .app{max-width:none;padding:0}
     .controls{display:none!important}
-    #cards{gap:0}
+    #cards{
+      display:block;
+      gap:0;
+    }
     .card-page{
       border:none;
       box-shadow:none;
       padding:0;
-      page-break-after:always;
-      break-after:page;
+      margin:0 0 0.10in 0;
       width:100%;
+      min-height:0;
+      break-inside:avoid;
+      page-break-inside:avoid;
+      page-break-after:auto;
     }
-    .card-page:last-child{page-break-after:auto;break-after:auto}
-    .card-title{margin-bottom:6px}
-    .scorecard{font-size:10px}
-    .scorecard th,.scorecard td{height:27px}
-    .player-row td{height:36px}
-    .tracking-row td{height:31px}
+    .card-page:nth-of-type(2n){
+      break-after:page;
+      page-break-after:always;
+      margin-bottom:0;
+    }
+    .card-page:last-child{
+      break-after:auto;
+      page-break-after:auto;
+    }
+    .card-title{margin-bottom:3px}
+    .card-title h2{font-size:10px}
+    .card-title .meta{font-size:6px}
+    .scorecard{font-size:6.2px;border-width:1px}
+    .scorecard col.name-col{width:112px}
+    .scorecard col.hole-col{width:29px}
+    .scorecard col.total-col{width:33px}
+    .scorecard col.initials-col{width:24px}
+    .scorecard th,.scorecard td{
+      height:18px;
+      padding:1px 1px;
+      border-width:.7px;
+    }
+    .scorecard .left{padding-left:3px}
+    .player-row td{height:24px}
+    .tracking-row td{height:20px}
+    .tee-dot{width:6px;height:6px;margin-right:3px}
+    .initials-cell{font-size:6.2px}
+    .initials-head{font-size:5.5px}
+    .footline{
+      font-size:6px;
+      padding-top:3px;
+      gap:10px;
+    }
+    .line{min-height:9px}
   }
 </style>
 </head>
@@ -459,38 +493,32 @@ function render(groups){
 let loadedGroups=[];
 
 
+const EMBEDDED_TEMPLATE_BASE64 = "UEsDBBQABgAIAAAAIQCnDOt5aAEAAA0FAAATAAgCW0NvbnRlbnRfVHlwZXNdLnhtbCCiBAIooAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACslMtuwjAQRfeV+g+Rt1Vi6KKqKgKLPpYtUukHuPaEWPglz0Dh7+sYqKoqBSHYxEo8c8/NxDejydqaYgURtXc1G1YDVoCTXmk3r9nH7KW8ZwWScEoY76BmG0A2GV9fjWabAFikboc1a4nCA+coW7ACKx/ApZ3GRyso3cY5D0IuxBz47WBwx6V3BI5K6jTYePQEjVgaKp7X6fHWSQSDrHjcFnasmokQjJaCklO+cuoPpdwRqtSZa7DVAW+SDcZ7Cd3O/4Bd31saTdQKiqmI9CpsssHXhn/5uPj0flEdFulx6ZtGS1BeLm2aQIUhglDYApA1VV4rK7Tb+z7Az8XI8zK8sJHu/bLwER+UvjfwfD3fQpY5AkTaGMBLjz2LHiO3IoJ6p5iScXEDv7UP+UjnZhp9wJSgCKdPYR+RrrsMSQgiafgJSd9h+yGm9J09dujyrUCdypZLJG/Pxm9leuA8/8zG3wAAAP//AwBQSwMEFAAGAAgAAAAhABNevmUCAQAA3wIAAAsACAJfcmVscy8ucmVscyCiBAIooAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACskk1LAzEQhu+C/yHMvTvbKiLSbC9F6E1k/QExmf1gN5mQpLr990ZBdKG2Hnqcr3eeeZn1ZrKjeKMQe3YSlkUJgpxm07tWwkv9uLgHEZNyRo3sSMKBImyq66v1M40q5aHY9T6KrOKihC4l/4AYdUdWxYI9uVxpOFiVchha9EoPqiVcleUdht8aUM00xc5ICDtzA6I++Lz5vDY3Ta9py3pvyaUjK5CmRM6QWfiQ2ULq8zWiVqGlJMGwfsrpiMr7ImMDHida/Z/o72vRUlJGJYWaA53m+ew4BbS8pEVzE3/cmUZ85zC8Mg+nWG4vyaL3MbE9Y85XzzcSzt6y+gAAAP//AwBQSwMEFAAGAAgAAAAhAEn2HVHnAwAAxAkAAA8AAAB4bC93b3JrYm9vay54bWysVttu4zYQfS/QfxD0zoiUqCviLHRFA2wWQeIm7VPASHQsRBJVio5tBPvvHcqW42yKws0WsCWRHB6emTkz0vmXTdsYL1wOtehmJjnDpsG7UlR19zQzf58XKDCNQbGuYo3o+Mzc8sH8cvHrL+drIZ8fhXg2AKAbZuZSqT6yrKFc8pYNZ6LnHawshGyZgqF8soZeclYNS85V21g2xp7VsrozdwiRPAVDLBZ1yTNRrlreqR2I5A1TQH9Y1v0wobXlKXAtk8+rHpWi7QHisW5qtR1BTaMto8unTkj22IDbG+IaGwk/D/4Ew8WeToKlD0e1dSnFIBbqDKCtHekP/hNsEfIuBJuPMTgNiVqSv9Q6hwdW0vskK++A5b2BEfzTaASkNWolguB9Es09cLPNi/NF3fC7nXQN1vffWKsz1ZhGwwaVV7Xi1cz0YSjW/N2EXPXJqm5g1cGO7ZnWxUHO19Ko+IKtGjUHIU/wM9PGtoOxtgRhxI3ismOKp6JToMO9Xz+ruRE7XQpQuHHD/1rVkkNhgb7AV7iyMmKPwzVTS2Mlm10EByg51tSbnknVQShQuz0blkzyXtTdTn09TIuONdbztuEPrdhy+XC85UFLdKqo4ejpetp4pHT2saz+g9ZZqQNoQQR3Xu6ef4wmOCujSc/XShrwfJl9hZzeshfIsGsa1b4BXEIKg4fXLA/8oChsFJMkQdSGS0CcAKVx6LokcOM49r6DF9KLSsFWarlXjcacmRQk8mHpim2mFYKjVV29nf9aUDtP/dBHSVzEiNLMRWFGCKJ+SGOnSAhO0+/aU90f72q+Ht70pYfG5r7uKrGemSiE9rp9N1qPS/d1pZagOuKH4O5u7jdePy2BL7FDHyahijSvmflaFK6fFkGAChJniLqBhxIvD1GSF1lC8tzDYTbysY4IjX0YiI13oxtr51b3ZgINX991bOFZRvoMeVmRMXfTtpI1JdSKvo2GIcF2qC34Rn0d1HgHmdZAj1Ac+zikCOeOi2gQ2iigjo1Smtm56+dZnrg6O/o9Ev0f3XSslmh6QWmWUBFqLln5DK+1G75I2AA62jkEfI/JJm6QYAco0oIUiJIQoyTxKHKzwnF9kqW5W7yR1e4vPtnLAmvczZlaQZ3rEh/Hkb4W+9nD5GI3sc/Tu5KLbjId9/3ufzO8Be8bfqJxcXeiYfrtan51ou3XfP5wX5xqHF8lWXy6fXxzE/85z/+YjrD+MaDWDwnPCA2xk8fIcVIKJVz4KCiwixzq09SlSU6w/5bwZl2+fC7fNrUmRabHnxv7VqTzr8Gj/beYMXC1X4I2MJbeSFzTH+vrgHbxNwAAAP//AwBQSwMEFAAGAAgAAAAhAIE+lJfzAAAAugIAABoACAF4bC9fcmVscy93b3JrYm9vay54bWwucmVscyCiBAEooAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKxSTUvEMBC9C/6HMHebdhUR2XQvIuxV6w8IybQp2yYhM3703xsqul1Y1ksvA2+Gee/Nx3b3NQ7iAxP1wSuoihIEehNs7zsFb83zzQMIYu2tHoJHBRMS7Orrq+0LDppzE7k+ksgsnhQ45vgoJRmHo6YiRPS50oY0as4wdTJqc9Adyk1Z3su05ID6hFPsrYK0t7cgmilm5f+5Q9v2Bp+CeR/R8xkJSTwNeQDR6NQhK/jBRfYI8rz8Zk15zmvBo/oM5RyrSx6qNT18hnQgh8hHH38pknPlopm7Ve/hdEL7yim/2/Isy/TvZuTJx9XfAAAA//8DAFBLAwQUAAYACAAAACEAZ3CspfgEAADREwAAGAAAAHhsL3dvcmtzaGVldHMvc2hlZXQxLnhtbJxYXW+rOBB9X2n/A+K5CdiQEFCSq3y0u3240mrv7r3PLnESVMBZ22larfa/79g0BBIj4lu1hcDJmfH4jMfj6Zf3InfeKBcZK2cuGvquQ8uUbbJyN3P//utpMHEdIUm5ITkr6cz9oML9Mv/1l+mJ8Vexp1Q6wFCKmbuX8pB4nkj3tCBiyA60hDdbxgsi4SPfeeLAKdnoLxW5h31/7BUkK92KIeH3cLDtNkvpmqXHgpayIuE0JxL8F/vsIM5sRXoPXUH46/EwSFlxAIqXLM/khyZ1nSJNnncl4+Qlh3G/o5CkzjuHXwx/wdmMfn5jqchSzgTbyiEwe5XPt8OPvdgjac10O/67aFDocfqWqQm8UOGfcwmNai58IQt+kmxck6lw8eSYbWbuv49x/LhCIRo8hng9CFcxGiwwigfR+mm5XOJlEIXr/9z5dJPBDKtROZxuZ+4CJesQud58qgX0PaMn0bh3JHn5RnOaSgpGkOsofb4w9qqAz/DIB0qhAYqSpDJ7oyua5zP3cQwS/0cbgVsw4NUWmvdna09a0X9wZ0O35JjLP9npd5rt9hLMhkM8gqEqrSSbjzUVKYgUbA/DkSJOWQ4s8N8pMsg2CHFB3vX1lG3kHu78IQrwBCkWIT+U8GAo6VFIVvyoIDoENQUEVlPA9ZMC4SEej8Z3M4SfDHC9MIzHod9L4VXD0cFaE0nmU85ODqgYXBYHotYElACtORwQB4VdABgiJGB23ub+1HuDkKef75aKSNPVCNRGrG4RuI1Y3yKCGuGBw7XXMBv3e63AMzeovB6GaNz6ic0WYJLut6DAShpKj003IaD3kyiwiUTJ6+4ZUmATiUqbu0kUuBEwjONWzMwBi2wsKLDJTVXA7nZTgU0ksQ2JAptIEBRXi8RQ6GbIWhGLI3PIkF3yVdlxqzJklQ0abRyxleRRl+aRleg1uhG4YNTIz8i/LCGtvEJWOaHRxhFbZQWq0sIQ/6b0YZJ61tAu7aOm+PtpKvXXq1p7WYsnHYpr5ka/ja7kwM3k6KXRaFP8cVP//TRd+sdN/ffTXJWDMGrkauRfSlK74DSTo99GV3LgZnL003SVBL1hOK+T/TRdRQE39d9Pc1UWmpk67ljhsFVqaLRRKFapgbsKA7ZSv0abvAms1K/RjRVu7DdSddRVGgKr1NBoo6tWqRFUqXG7wgVW6tdoozdW6g8q9dcrXGvX1lkagmZp6NW0RhtdtUqNoKs0BFb612ijN1b6D65KQ9Tcv43irg2vVXIEXaUhtEoOjTbunK30D73m1S6uagurTqegfKfbR+Gk7Kh6PNjczaf148+eFY+TBeQ87OGv3wR+sgBRm96E8CYyvpkki6oFvrGTLHSDef0czButI7AOuy2DdQTWkdE6AutQXQ3fwRjeaPveJS7QwENP+J3kGVzV4UwdKNXbt1458uMAnW6eCek6JM/ZaZmT8rVqJPfs9FwejvIrFYLsqoZYwMNHzhlvPaxa+BVOVmru6vOG1Wi5inGIB+t4FQzCdTQZTEbReoAWAQ6fUBgvgpE6b1AnVcecoLkL1tPXB2eZH+mD85UWL5Q/OD/2mYSP37IcTssenN84paU79epvTb32oKBtuwrAfHqAAXwlfJdBNHK61ScDkM28Oj3wh3Av2UGdF0Sw5LwwCW3/+dMejs4oNMz+EBbOLWPy/EE1iPVh3Px/AAAA//8DAFBLAwQUAAYACAAAACEA9mC0QbgHAAARIgAAEwAAAHhsL3RoZW1lL3RoZW1lMS54bWzsWs2PG7cVvwfI/0DMXdbM6HthOdCnN/bueuGVXeRISZSGXs5wQFK7KxQBCufUS4ECadFLgd56KIoGaIAGueSPMWAjTf+IPHJGmuGKir3+QJJidy8z1O89/ua9x8c3j3P3k6uYoQsiJOVJ1wvu+B4iyYzPabLsek8m40rbQ1LhZI4ZT0jXWxPpfXLv44/u4gMVkZggkE/kAe56kVLpQbUqZzCM5R2ekgR+W3ARYwW3YlmdC3wJemNWDX2/WY0xTTyU4BjUPlos6IygiVbp3dsoHzG4TZTUAzMmzrRqYkkY7Pw80Ai5lgMm0AVmXQ/mmfPLCblSHmJYKvih6/nmz6veu1vFB7kQU3tkS3Jj85fL5QLz89DMKZbT7aT+KGzXg61+A2BqFzdq6/+tPgPAsxk8acalrDNoNP12mGNLoOzSobvTCmo2vqS/tsM56DT7Yd3Sb0CZ/vruM447o2HDwhtQhm/s4Ht+2O/ULLwBZfjmDr4+6rXCkYU3oIjR5HwX3Wy1280cvYUsODt0wjvNpt8a5vACBdGwjS49xYInal+sxfgZF2MAaCDDiiZIrVOywDOI4l6quERDKlOG1x5KccIlDPthEEDo1f1w+28sjg8ILklrXsBE7gxpPkjOBE1V13sAWr0S5OU337x4/vWL5/958cUXL57/Cx3RZaQyVZbcIU6WZbkf/v7H//31d+i///7bD1/+yY2XZfyrf/7+1bff/ZR6WGqFKV7++atXX3/18i9/+P4fXzq09wSeluETGhOJTsglesxjeEBjCps/mYqbSUwiTC0JHIFuh+qRiizgyRozF65PbBM+FZBlXMD7q2cW17NIrBR1zPwwii3gMeesz4XTAA/1XCULT1bJ0j25WJVxjzG+cM09wInl4NEqhfRKXSoHEbFonjKcKLwkCVFI/8bPCXE83WeUWnY9pjPBJV8o9BlFfUydJpnQqRVIhdAhjcEvaxdBcLVlm+OnqM+Z66mH5MJGwrLAzEF+Qphlxvt4pXDsUjnBMSsb/AiryEXybC1mZdxIKvD0kjCORnMipUvmkYDnLTn9IYbE5nT7MVvHNlIoeu7SeYQ5LyOH/HwQ4Th1cqZJVMZ+Ks8hRDE65coFP+b2CtH34Aec7HX3U0osd78+ETyBBFemVASI/mUlHL68T7i9HtdsgYkry/REbGXXnqDO6OivllZoHxHC8CWeE4KefOpg0OepZfOC9IMIssohcQXWA2zHqr5PiIQySdc1uynyiEorZM/Iku/hc7y+lnjWOImx2Kf5BLxuhe5UwGJ0UHjEZudl4AmF8g/ixWmURxJ0lIJ7tE/raYStvUvfS3e8roXlvzdZY7Aun910XYIMubEMJPY3ts0EM2uCImAmmKIjV7oFEcv9hYjeV43Yyim3sBdt4QYojKx6J6bJ64qfEywEv/x5ap8PVvW4Fb9LvbMvrxxeq3L24X6Ftc0Qr5JTAtvJbuK6LW1uSxvv/7602beWbwua24LmtqBxvYJ9kIKmqGGgvClaPabxE+/t+ywoY2dqzciRNK0fCa818zEMmp6UaUxu+4BpBJf6eWACC7cU2MggwdVvqIrOIpxCfygwXcylzFUvJUq5hLaRGTb9VHJNt2k+reJjPs/anaa/5GcmlFgV434DGk/ZOLSqVIZutvJBzW9D3bBdmlbrhoCWvQmJ0mQ2iZqDRGsz+BoSunP2flh0HCzaWv3GVTumAGpbr8B7N4K39a7XqGeMoCMHNfpc+ylz9ca72jnv1dP7jMnKEQCtxV1PdzTXvY+nny4LtTfwtEXCOCULK5uE8ZUp8GQEb8N5dJb77j8VcDf1dadwqUVPm2KzGgoarfaH8LVOItdyA0vKmYIl6BLWeAiLzkMznHa9BfSN4TJOIXikfvfCbAmHLzMlshX/NqklFVINsYwyi5usk/knpooIxGjc9fTzb8OBJSaJZOQ6sHR/qeRCveB+aeTA67aXyWJBZqrs99KItnR2Cyk+SxbOX43424O1JF+Bu8+i+SWaspV4jCHEGq1Ae3dOJRwfBJmr5xTOw7aZrIi/aztTnv2tQ64iH2OWRjjfUsrZPIObDWVLx9xtbVC6y58ZDLprwulS77DvvO2+fq/Wliv2x06xaVppRW+b7mz64Xb5EqtiF7VYZbn7es7tbJIdBKpzm3j3vb9ErZjMoqYZ7+ZhnbTzUZvae6wISrtPc4/dtpuE0xJvu/WD3PWo1TvEprA0gW8Ozstn23z6DJLHEE4RVyw77WYJ3JnSMj0VxrdTPl/nl0xmiSbzuS5Ks1T+mCwQnV91vdBVOeaHx3k1wBJAm5oXVthW0Fnt2YJ6s8tFswW7Fc7K2Gv1qi28ldgcs26FTWvRRVtdbU7Uda1uZtYOy57apGFjKbjatSK0yQWG0jk7zM1yL+SZK5VX2nCFVoJ2vd/6jV59EDYGFb/dGFXqtbpfaTd6tUqv0agFo0bgD/vh50BPRXHQyL58GMNpEFvn3z+Y8Z1vIOLNgdedGY+r3HzjUDXeN99ABOH+byDAkUArHAX1sBcOKoNh0KzUw2Gz0m7VepVB2ByGPdi0m+Pe5x66MOCgPxyOx42w0hwAru73GpVevzaoNNujfjgORvWhD+B8+7mCtxidc3NbwKXhde9HAAAA//8DAFBLAwQUAAYACAAAACEA912o7D4DAADnCAAADQAAAHhsL3N0eWxlcy54bWy0VluPmzoQfq/U/2DxzhoIsEkEVMmySJXa1ZF2j9RXB0xi1RdkzJa06n8/YyAJe3rZdnvOS7BnPDPfzDdjJ3nTC44eqW6ZkqnjX3kOorJUFZP71Pn7oXCXDmoNkRXhStLUOdLWeZO9fpW05sjp/YFSg8CFbFPnYEyzxrgtD1SQ9ko1VIKmVloQA1u9x22jKalaayQ4DjwvxoIw6Ywe1qL8FSeC6I9d45ZKNMSwHePMHAdfDhLl+u1eKk12HKD2fkhK1PuxDlCvT0EG6TdxBCu1alVtrsAvVnXNSvot3BVeYVJePIHnl3nyI+wFT3Lv9Qs9hVjTR2bpc7KkVtK0qFSdNKkTAFBbgvVHqT7JwqqA4elUlrSf0SPhIPEdnCWl4kojA9RB5QaJJIKOJzaNUS26I1qrT/ZsTQTjx1EXWMFA+XRYMCDACrEFM0K6BFv9r7GGkC3EZJzPyjAKsgT6xVAtC9Ciaf1wbCBfCa09QgbVs6f3mhz9IJoZ4CFgluyUrmCUTgTYWo+iLOG0NlAUzfYH+zWqgd+dMgbaLUsqRvZKEm7LdrKYFpBOSTm/t+P2oX6SVV8j2YlCmLdV6sDg2oKflpDItBz9jRvw/yMjH+x/aITnEEZAMywh5Pn7WFBfPwvKJvV9UGdrRJqGHzec7aWgtu1t1clpiw5Ks89QF9vpJejp2Jt9/UeQfz+ovWMNK5+DEfwSjf9K/q4TO6qL4aK1+f+X6AbmgetZFz7pwXNjIHtfpM6dRcHh5pnIRbuOccPkmervGyB7WQ0mAL/X645BS38p4s1iE17H7k2c+2642BbuduP57tLfLP08j6/zxfXXYQ7PXgFo1V/GxLNaY9+DYYDO0KHMFa1Jx83DWZk6l/V7WrFOAKjp1F/sUZnBRepc1u/sNPuxjUF7866F6w6+qNMMwN9ur1f5bRG4S2+7BPA0clfRNnej8Gab58XKC7ybr7NX6Q/epOERhYb2w3XL4eXSU7IT+PuLLHVmmxH+UD+APce+CmJvE/meWyyg3GFMlu4yXkRuEflBHofb26iIZtijF75dHvb98RW04KO1YYJyJk9cnRiaS4Ek2P4kCXxiAl/+oWT/AAAA//8DAFBLAwQUAAYACAAAACEAc7KOMrEAAAD0AAAAFAAAAHhsL3NoYXJlZFN0cmluZ3MueG1sXM5BCsIwEAXQveAdwuw1VUREkrgQxKWLeoDQjjbQTGpmKnp7IyKCy//+DHyze8Re3TFzSGRhMa9AITWpDXS1cK4Psw0oFk+t7xOhhScy7Nx0YphFlV9iC53IsNWamw6j53kakEpzSTl6KTFfNQ8ZfcsdosReL6tqraMPBKpJI4mFFaiRwm3E/Tc7w8EZcTWiqkNEo8UZ/baPn3r/xPyv5fqfjvvTj3RZ7V4AAAD//wMAUEsDBBQABgAIAAAAIQA8vwiMRwEAAGcCAAARAAgBZG9jUHJvcHMvY29yZS54bWwgogQBKKAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACMkstOwzAURPdI/EPkNYnzKKVYSSoB6gYqIVEEYmfZt21E/JBtaPP3OEkbUpUFS98ZH89cOZ/vRR18g7GVkgVKohgFIJnildwU6HW1CGcosI5KTmsloUANWDQvLy9ypglTBp6N0mBcBTbwJGkJ0wXaOqcJxpZtQVAbeYf04loZQZ0/mg3WlH3SDeA0jqdYgKOcOopbYKgHIjogORuQ+svUHYAzDDUIkM7iJErwr9eBEfbPC50ycorKNdp3OsQdsznrxcG9t9Vg3O120S7rYvj8CX5fPr10VcNKtrtigMqcM8IMUKdMuVQNmKvgsakhx6N5u8OaWrf0615XwO+aU+u57KldiR4NPPCxSF/iqLxl9w+rBSrTOJ2G8W2YTlbxDckykk0/2tdP7rcx+4E4ZPgncUbSGZlcj4hHQJnjs69R/gAAAP//AwBQSwMEFAAGAAgAAAAhAGFJCRCJAQAAEQMAABAACAFkb2NQcm9wcy9hcHAueG1sIKIEASigAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnJJBb9swDIXvA/ofDN0bOd1QDIGsYkhX9LBhAZK2Z02mY6GyJIiskezXj7bR1Nl66o3ke3j6REndHDpf9JDRxVCJ5aIUBQQbaxf2lXjY3V1+FQWSCbXxMUAljoDiRl98UpscE2RygAVHBKxES5RWUqJtoTO4YDmw0sTcGeI272VsGmfhNtqXDgLJq7K8lnAgCDXUl+kUKKbEVU8fDa2jHfjwcXdMDKzVt5S8s4b4lvqnszlibKj4frDglZyLium2YF+yo6MulZy3amuNhzUH68Z4BCXfBuoezLC0jXEZtepp1YOlmAt0f3htV6L4bRAGnEr0JjsTiLEG29SMtU9IWT/F/IwtAKGSbJiGYzn3zmv3RS9HAxfnxiFgAmHhHHHnyAP+ajYm0zvEyznxyDDxTjjbgW86c843XplP+id7HbtkwpGFU/XDhWd8SLt4awhe13k+VNvWZKj5BU7rPg3UPW8y+yFk3Zqwh/rV878wPP7j9MP18npRfi75XWczJd/+sv4LAAD//wMAUEsDBBQABgAIAAAAIQA1mWoQ0gEAAH8GAAATAAgBZG9jUHJvcHMvY3VzdG9tLnhtbCCiBAEooAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALSVTYvbMBiE74X+B6Pzai3JUiyFJMvmY2GhWxaS9tBLUKTXicGWjK2kDaX/vUq/Qgq9uPhiEDLjZ4ZhPHn4UlfJCdqu9G6K6D1BCTjjben2U/Rh84QlSrqgndWVdzBFZ+jQw+ztm8lr6xtoQwldEiVcN0WHEJpxmnbmALXu7uO1izeFb2sd4rHdp74oSgNLb441uJAyQkapOXbB17j5I4d+6o1Poa+k9eZC133cnJuIO5v8Ej8nRR1KO0Vfl2KxXAoiMFupBaaEzrHKVI6JJITN2eJJPa6+oaS5vMxQ4nQdrb+sn1+37/QOqi3Jbc6oATwSQDA3usBakAznglJuMiAjvduunN5VYOP3T2FcNZ+70M5Ce4RJej1P0t9s/0mZ9aVcQ1jqADeUjLARJgozviH5OJNjSj8NQs37Ur9AOPjbaNc/WtraQUBFX9D3sTo32S6qMnY/iZnrLRmEddS7CmWA59tQTSGEAUqwzPId5sxYLKngGJTmdmepJJkaxETe18SjCXHK/rKhrKS2AImVkhzzghdYCSJxAUxYQTUnMhvERlzPfuOx8C7EnszLcBmw62AMUxnVF3Oj9zd4lNwl2V0Sn/RfeabXP8fsOwAAAP//AwBQSwECLQAUAAYACAAAACEApwzreWgBAAANBQAAEwAAAAAAAAAAAAAAAAAAAAAAW0NvbnRlbnRfVHlwZXNdLnhtbFBLAQItABQABgAIAAAAIQATXr5lAgEAAN8CAAALAAAAAAAAAAAAAAAAAKEDAABfcmVscy8ucmVsc1BLAQItABQABgAIAAAAIQBJ9h1R5wMAAMQJAAAPAAAAAAAAAAAAAAAAANQGAAB4bC93b3JrYm9vay54bWxQSwECLQAUAAYACAAAACEAgT6Ul/MAAAC6AgAAGgAAAAAAAAAAAAAAAADoCgAAeGwvX3JlbHMvd29ya2Jvb2sueG1sLnJlbHNQSwECLQAUAAYACAAAACEAZ3CspfgEAADREwAAGAAAAAAAAAAAAAAAAAAbDQAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sUEsBAi0AFAAGAAgAAAAhAPZgtEG4BwAAESIAABMAAAAAAAAAAAAAAAAASRIAAHhsL3RoZW1lL3RoZW1lMS54bWxQSwECLQAUAAYACAAAACEA912o7D4DAADnCAAADQAAAAAAAAAAAAAAAAAyGgAAeGwvc3R5bGVzLnhtbFBLAQItABQABgAIAAAAIQBzso4ysQAAAPQAAAAUAAAAAAAAAAAAAAAAAJsdAAB4bC9zaGFyZWRTdHJpbmdzLnhtbFBLAQItABQABgAIAAAAIQA8vwiMRwEAAGcCAAARAAAAAAAAAAAAAAAAAH4eAABkb2NQcm9wcy9jb3JlLnhtbFBLAQItABQABgAIAAAAIQBhSQkQiQEAABEDAAAQAAAAAAAAAAAAAAAAAPwgAABkb2NQcm9wcy9hcHAueG1sUEsBAi0AFAAGAAgAAAAhADWZahDSAQAAfwYAABMAAAAAAAAAAAAAAAAAuyMAAGRvY1Byb3BzL2N1c3RvbS54bWxQSwUGAAAAAAsACwDBAgAAxiYAAAAA";
+
 function downloadBlankTemplate(){
-  if(typeof XLSX==="undefined"){
+  try{
+    const binary = atob(EMBEDDED_TEMPLATE_BASE64);
+    const bytes = new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+
+    const blob = new Blob([bytes], {
+      type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Scorecard Template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+
     document.getElementById("status").innerHTML =
-      '<span class="warning">The Excel library did not load. Make sure you are connected to the internet and reopen this page.</span>';
-    return;
+      'Downloaded the OAC <b>Scorecard Template.xlsx</b>.';
+  }catch(err){
+    document.getElementById("status").innerHTML =
+      '<span class="warning">Could not download the Excel template. Please refresh the page and try again.</span>';
   }
-
-  const rows = [
-    ["Tee Time","Player","Tee","HCP"]
-  ];
-
-  // Add enough blank rows for six foursomes (24 players).
-  for(let i=0;i<24;i++){
-    rows.push(["","","",""]);
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-
-  // Set practical column widths for the template.
-  ws["!cols"] = [
-    {wch:14},
-    {wch:28},
-    {wch:14},
-    {wch:10}
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Scorecard Template");
-  XLSX.writeFile(wb, "OAC_Scorecard_Template.xlsx");
-
-  document.getElementById("status").innerHTML =
-    'Downloaded <b>OAC_Scorecard_Template.xlsx</b>. Enter the tee time on the first player in each group; leave the Tee Time cells blank for the remaining players in that group.';
 }
 
 function parseWorkbook(file){
@@ -614,20 +642,22 @@ function generatePdf(download=true){
   }
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:"landscape", unit:"pt", format:"letter", compress:true});
+  const doc = new jsPDF({orientation:"portrait", unit:"pt", format:"letter", compress:true});
 
   const type=document.getElementById("hcpType").value;
   const indices = type==="women" ? COURSE.womenHcp : COURSE.menHcp;
   const indexLabel = type==="women" ? "Women's Hcp" : "Men's Hcp";
 
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 22;
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 18;
   const tableX = margin;
   const tableW = pageW - margin*2;
-  const nameW = 108;
-  const totalW = 34;
-  const initialsW = 24;
+  const nameW = 90;
+  const totalW = 28;
+  const initialsW = 20;
   const holeW = (tableW - nameW - totalW*3 - initialsW)/18;
+  const halfPageH = pageH/2;
 
   const colWidths = [nameW];
   for(let i=0;i<9;i++) colWidths.push(holeW);
@@ -658,7 +688,7 @@ function generatePdf(download=true){
       const txtColor = opts.textColor || (darkFill ? [255,255,255] : [20,20,20]);
       doc.setTextColor(txtColor[0],txtColor[1],txtColor[2]);
       doc.setFont("helvetica", opts.bold ? "bold" : "normal");
-      doc.setFontSize(opts.fontSize || 7.7);
+      doc.setFontSize(opts.fontSize || 5.8);
       const align = opts.align || "center";
       let tx = x+w/2;
       if(align==="left") tx=x+4;
@@ -669,37 +699,40 @@ function generatePdf(download=true){
   }
 
   loadedGroups.forEach((g,gi)=>{
-    if(gi>0) doc.addPage("letter","landscape");
+    if(gi>0 && gi%2===0) doc.addPage("letter","portrait");
+
+    const slot = gi%2;
+    const slotTop = slot===0 ? margin : halfPageH + 8;
 
     doc.setTextColor(20,20,20);
     doc.setFont("helvetica","bold");
-    doc.setFontSize(13);
-    doc.text(`Tee Time: ${pdfSafe(g.teeTime)}`, margin, 28);
+    doc.setFontSize(9);
+    doc.text(`Tee Time: ${pdfSafe(g.teeTime)}`, margin, slotTop+9);
 
     doc.setFont("helvetica","normal");
-    doc.setFontSize(7.5);
-    doc.text(`Scorecard ${gi+1} of ${loadedGroups.length}`, pageW-margin, 28, {align:"right"});
+    doc.setFontSize(5.8);
+    doc.text(`Scorecard ${gi+1} of ${loadedGroups.length}`, pageW-margin, slotTop+9, {align:"right"});
 
-    let y=38;
+    let y=slotTop+14;
 
     // Header row
-    const headerH=18;
+    const headerH=13;
     cell(doc,0,y,headerH,"HOLE",{fill:[41,41,41],textColor:[255,255,255],bold:true,align:"left"});
     for(let i=0;i<9;i++) cell(doc,1+i,y,headerH,String(i+1),{fill:[41,41,41],textColor:[255,255,255],bold:true});
     cell(doc,10,y,headerH,"OUT",{fill:[41,41,41],textColor:[255,255,255],bold:true});
-    cell(doc,11,y,headerH,"INIT",{fill:[41,41,41],textColor:[255,255,255],bold:true,fontSize:6.4});
+    cell(doc,11,y,headerH,"INIT",{fill:[41,41,41],textColor:[255,255,255],bold:true,fontSize:5.0});
     for(let i=0;i<9;i++) cell(doc,12+i,y,headerH,String(i+10),{fill:[41,41,41],textColor:[255,255,255],bold:true});
     cell(doc,21,y,headerH,"IN",{fill:[41,41,41],textColor:[255,255,255],bold:true});
     cell(doc,22,y,headerH,"TOT",{fill:[41,41,41],textColor:[255,255,255],bold:true});
     y+=headerH;
 
     // Tee rows
-    const teeH=17;
+    const teeH=12;
     COURSE.tees.forEach(t=>{
       let fill=pdfColorForTee(t.name);
       const dark = (fill[0]+fill[1]+fill[2]) < 220;
       cell(doc,0,y,teeH,`${t.name}  ${t.rating}`,{
-        fill, textColor:dark?[255,255,255]:[20,20,20], bold:true, align:"left", fontSize:7.2
+        fill, textColor:dark?[255,255,255]:[20,20,20], bold:true, align:"left", fontSize:5.4
       });
       t.yards.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,teeH,String(v),{fill,textColor:dark?[255,255,255]:[20,20,20]}));
       cell(doc,10,y,teeH,String(sum(t.yards.slice(0,9))),{fill,textColor:dark?[255,255,255]:[20,20,20],bold:true});
@@ -711,8 +744,8 @@ function generatePdf(download=true){
     });
 
     // Handicap row
-    const idxH=17;
-    cell(doc,0,y,idxH,indexLabel,{fill:[250,250,250],bold:true,align:"left",fontSize:7.1});
+    const idxH=12;
+    cell(doc,0,y,idxH,indexLabel,{fill:[250,250,250],bold:true,align:"left",fontSize:5.3});
     indices.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,idxH,String(v),{fill:[250,250,250],bold:true}));
     cell(doc,10,y,idxH,"",{fill:[250,250,250]});
     cell(doc,11,y,idxH,"",{fill:[250,250,250]});
@@ -724,7 +757,7 @@ function generatePdf(download=true){
     // Player rows
     const players=g.players.slice(0,4);
     while(players.length<4) players.push({name:"",tee:"",hcp:""});
-    const playerH=27;
+    const playerH=20;
 
     players.forEach(p=>{
       const hcp=Number(p.hcp);
@@ -739,17 +772,17 @@ function generatePdf(download=true){
 
       if(p.name){
         const fill = pdfColorForTee(tee);
-        const cx = px + 8;
+        const cx = px + 7;
         const cy = y + playerH/2;
         doc.setFillColor(fill[0],fill[1],fill[2]);
         doc.setDrawColor(70,70,70);
-        doc.circle(cx,cy,3.2,"FD");
+        doc.circle(cx,cy,2.5,"FD");
 
         doc.setTextColor(20,20,20);
         doc.setFont("helvetica","bold");
-        doc.setFontSize(7.7);
+        doc.setFontSize(6.0);
         const nameLabel = `${p.name}${Number.isFinite(hcp) ? ` (${hcp})` : ""}`;
-        doc.text(pdfSafe(nameLabel), px+15, y+playerH/2+2.6);
+        doc.text(pdfSafe(nameLabel), px+12, y+playerH/2+2.1);
       }
 
       for(let i=0;i<9;i++){
@@ -757,7 +790,7 @@ function generatePdf(download=true){
         if(p.name) drawPdfStroke(doc,xAt(1+i),y,colWidths[1+i],playerH,strokeCount(hcp,indices[i]));
       }
       cell(doc,10,y,playerH,"");
-      cell(doc,11,y,playerH,p.name ? getInitials(p.name) : "",{bold:true,fontSize:7.2});
+      cell(doc,11,y,playerH,p.name ? getInitials(p.name) : "",{bold:true,fontSize:5.4});
 
       for(let i=0;i<9;i++){
         cell(doc,12+i,y,playerH,"");
@@ -769,7 +802,7 @@ function generatePdf(download=true){
     });
 
     // PAR row sits between score entry and points/other tracking.
-    const parH=18;
+    const parH=13;
     cell(doc,0,y,parH,"PAR",{fill:[41,41,41],textColor:[255,255,255],bold:true,align:"left"});
     COURSE.par.slice(0,9).forEach((v,i)=>cell(doc,1+i,y,parH,String(v),{fill:[41,41,41],textColor:[255,255,255],bold:true}));
     cell(doc,10,y,parH,"35",{fill:[41,41,41],textColor:[255,255,255],bold:true});
@@ -780,7 +813,7 @@ function generatePdf(download=true){
     y+=parH;
 
     // Second set of boxes for tracking points/other items.
-    const trackingH=22;
+    const trackingH=16;
     players.forEach((p,pi)=>{
       const tee=normalize(p.tee);
 
@@ -793,18 +826,18 @@ function generatePdf(download=true){
         const fill = pdfColorForTee(tee);
         doc.setFillColor(fill[0],fill[1],fill[2]);
         doc.setDrawColor(70,70,70);
-        doc.circle(px+8,y+trackingH/2,3.0,"FD");
+        doc.circle(px+7,y+trackingH/2,2.3,"FD");
 
         doc.setTextColor(20,20,20);
         doc.setFont("helvetica","bold");
-        doc.setFontSize(7.3);
-        doc.text(pdfSafe(p.name), px+15, y+trackingH/2+2.5);
+        doc.setFontSize(5.8);
+        doc.text(pdfSafe(p.name), px+12, y+trackingH/2+2.0);
       }
 
       for(let c=1;c<=22;c++){
         cell(doc,c,y,trackingH,(c===11 && p.name) ? getInitials(p.name) : "",{
           bold:c===11,
-          fontSize:c===11 ? 7.0 : 7.7
+          fontSize:c===11 ? 5.6 : 5.8
         });
       }
       y+=trackingH;
@@ -816,13 +849,21 @@ function generatePdf(download=true){
     doc.setTextColor(20,20,20);
     doc.setFont("helvetica","normal");
     doc.setFontSize(8);
-    const lineW=180;
+    const lineW=118;
+    doc.setFontSize(5.8);
     doc.text("Scorer:",margin,y);
-    doc.line(margin+32,y+1,margin+32+lineW,y+1);
-    doc.text("Attest:",margin+265,y);
-    doc.line(margin+295,y+1,margin+295+lineW,y+1);
-    doc.text("Date:",pageW-170,y);
-    doc.line(pageW-145,y+1,pageW-margin,y+1);
+    doc.line(margin+24,y+1,margin+24+lineW,y+1);
+    doc.text("Attest:",margin+190,y);
+    doc.line(margin+214,y+1,margin+214+lineW,y+1);
+    doc.text("Date:",pageW-128,y);
+    doc.line(pageW-106,y+1,pageW-margin,y+1);
+
+    // Divider between the two scorecards on each portrait page.
+    if(slot===0 && gi < loadedGroups.length-1){
+      doc.setDrawColor(180,180,180);
+      doc.setLineWidth(0.5);
+      doc.line(margin,halfPageH,pageW-margin,halfPageH);
+    }
   });
 
   const fileName = "golf-scorecards.pdf";
